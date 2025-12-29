@@ -1,0 +1,41 @@
+project:
+  name: hackathon-todo
+  version: 2.0.0
+  description: "Spec-driven task management system with authentication"
+
+phases:
+  phase1-console:
+    name: "Phase I - Console Application"
+    description: "Python console application with in-memory storage"
+    status: completed
+
+  phase2-web:
+    name: "Phase II - Authenticated Web API"
+    description: "FastAPI backend with Next.js frontend and Better Auth"
+    status: active
+
+current_phase: phase2-web
+
+structure:
+  specs:
+    - overview.md
+    - architecture.md
+    - features/
+    - api/
+    - database/
+    - ui/
+
+  directories:
+    backend: "FastAPI application"
+    frontend: "Next.js application"
+    specs: "Project specifications"
+
+conventions:
+  code_style: "PEP 8 for Python, ESLint for TypeScript"
+  testing: "pytest for backend, Jest for frontend"
+  documentation: "Markdown with Mermaid diagrams"
+
+authentication:
+  provider: "Better Auth"
+  method: "JWT"
+  secret_env: "BETTER_AUTH_SECRET"
