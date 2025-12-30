@@ -125,6 +125,31 @@ npm run dev
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
 
+## Vercel Deployment
+
+This project is configured for easy deployment on Vercel.
+
+### Prerequisites
+- A GitHub repository with your code
+- A Vercel account
+
+### Deployment Steps
+1. Push your code to GitHub.
+2. In Vercel, click **Add New** > **Project**.
+3. Import your repository.
+4. **Project Configuration**:
+   - **Root Directory**: Leave empty (the included `vercel.json` handles the sub-directory configuration).
+   - **Framework Preset**: Next.js.
+5. **Environment Variables**:
+   - Add `NEXT_PUBLIC_API_URL`: The URL of your deployed backend (e.g., `https://your-backend-api.railway.app/api`).
+6. Click **Deploy**.
+
+### Manual Vercel Configuration
+The project uses a `vercel.json` in the root to manage the monorepo-style structure:
+- It runs the build from the `frontend` directory.
+- It routes all traffic to the frontend application.
+- It ensures the `.next` directory is correctly identified as the output.
+
 ## Environment Variables
 
 ### Backend (.env)
