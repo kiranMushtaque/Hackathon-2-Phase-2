@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
 from datetime import datetime
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, JSON
 from sqlalchemy.sql import func
 
 
@@ -32,6 +32,13 @@ class Task(SQLModel, table=True):
     description: Optional[str] = Field(default=None, max_length=1000)
     completed: bool = Field(default=False)
     user_id: int = Field(index=True, foreign_key="users.id")
+
+    # Enhanced fields for Phase 2
+    priority: str = Field(default="medium", max_length=10)  # low, medium, high
+    starred: bool = Field(default=False)
+    tags: Optional[str] = Field(default=None, sa_column=Column(JSON))  # JSON array of tags
+    due_date: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+
     created_at: Optional[datetime] = Field(
         default=None,
         sa_column=Column(DateTime, default=func.now())
@@ -48,9 +55,17 @@ class TaskCreate(SQLModel):
     title: str
     description: Optional[str] = None
     completed: bool = False
+    priority: str = "medium"
+    starred: bool = False
+    tags: Optional[List[str]] = None
+    due_date: Optional[str] = None  # ISO format string
 
 
 class TaskUpdate(SQLModel):
     title: Optional[str] = None
     description: Optional[str] = None
     completed: Optional[bool] = None
+    priority: Optional[str] = None
+    starred: Optional[bool] = None
+    tags: Optional[List[str]] = None
+    due_date: Optional[str] = None  # ISO format string

@@ -56,7 +56,7 @@ def read_task(
     return db_task
 
 
-@router.post("/{user_id}/tasks", response_model=schemas.Task)
+@router.post("/{user_id}/tasks", response_model=schemas.Task, status_code=status.HTTP_201_CREATED)
 def create_task(
     user_id: int,
     task: schemas.TaskCreate,
@@ -85,6 +85,20 @@ def create_task(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Description must be 1000 characters or less"
+        )
+
+    # Validate priority
+    if task.priority and task.priority not in ["low", "medium", "high"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Priority must be low, medium, or high"
+        )
+
+    # Validate tags length
+    if task.tags and len(task.tags) > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 10 tags allowed"
         )
 
     return crud.create_task(db=db, task=task, user_id=user_id)
@@ -121,6 +135,20 @@ def update_task(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Description must be 1000 characters or less"
+        )
+
+    # Validate priority if provided
+    if task_update.priority and task_update.priority not in ["low", "medium", "high"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Priority must be low, medium, or high"
+        )
+
+    # Validate tags length if provided
+    if task_update.tags and len(task_update.tags) > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 10 tags allowed"
         )
 
     db_task = crud.update_task(
@@ -180,7 +208,7 @@ def update_task_completion(
     return db_task
 
 
-@router.delete("/{user_id}/tasks/{task_id}")
+@router.delete("/{user_id}/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(
     user_id: int,
     task_id: int,
@@ -205,4 +233,4 @@ def delete_task(
             detail="Task not found"
         )
 
-    return {"message": "Task deleted successfully"}
+    return None  # 204 No Content

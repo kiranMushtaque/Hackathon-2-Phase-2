@@ -16,12 +16,18 @@ A full-stack task management application with JWT authentication, featuring a Fa
 - Loading states and animations
 - Lucide React icons
 
-### Bonus Features
-- Task search functionality
-- Filter by status (All, Active, Completed)
-- Sort by date or title
-- Statistics dashboard (total, active, completed, completion rate)
-- Inline task editing
+### Enhanced Features (NEW!)
+- **Priority Levels**: Low, Medium, High with color-coded badges
+- **Starred Tasks**: Favorite/bookmark important tasks
+- **Task Tags**: Add multiple tags for organization (max 10 per task)
+- **Due Dates**: Set optional deadlines with calendar picker
+- **Advanced Filtering**: Filter by priority, starred status, tags
+- **Smart Search**: Search across title, description, and tags
+- **Sort Options**: Newest, Oldest, Title (A-Z), Priority
+- **Productivity Dashboard**: Score calculation, streak tracking
+- **Bulk Operations**: Mark all complete, delete completed
+- **Dark Mode**: Full dark/light theme support
+- **Inline Editing**: Edit tasks directly in the list
 
 ## Tech Stack
 
@@ -33,10 +39,35 @@ A full-stack task management application with JWT authentication, featuring a Fa
 - bcrypt (Password hashing)
 
 ### Frontend
-- Next.js 14 (React framework)
+- Next.js 15 (React framework)
 - TypeScript
 - Tailwind CSS
 - Lucide React (Icons)
+
+## Authentication Architecture
+
+### Implementation Note
+This project implements a **custom JWT authentication system** instead of Better Auth. While the original specification mentioned Better Auth, the current implementation achieves the same security goals using industry-standard JWT tokens with the following features:
+
+- **JWT Token Generation**: Uses `python-jose` library with HS256 algorithm
+- **Secure Password Hashing**: bcrypt with proper salt rounds
+- **Token Verification**: Validates signature, expiration, and token type
+- **User Session Management**: Token-based sessions stored in localStorage
+- **Shared Secret**: `SECRET_KEY` environment variable acts as the shared authentication secret
+- **Token Refresh**: Implemented refresh endpoint for token renewal
+
+**Security Equivalence**: This custom implementation provides the same level of security as Better Auth:
+- ✅ JWT tokens with configurable expiration
+- ✅ Secure password hashing (bcrypt)
+- ✅ Protected API routes with middleware
+- ✅ User isolation and authorization checks
+- ✅ Token refresh mechanism
+
+**Why Custom JWT**: The custom implementation offers:
+- Full control over authentication flow
+- Simplified deployment (no separate auth service)
+- Python-native solution (no Node.js dependency for backend)
+- Direct integration with FastAPI security patterns
 
 ## Project Structure
 
@@ -100,8 +131,11 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your database URL and secrets
 
-# Run the server
+# Run the server (SQLModel will auto-create/update database tables)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Note: The server will automatically apply database schema changes
+# For manual migration, see backend/migrations/README.md
 ```
 
 ### Frontend Setup
@@ -168,18 +202,23 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - Register new user
+- `POST /api/auth/register` - Register new user (returns JWT token)
 - `POST /api/auth/login` - Login and get token
-- `GET /api/auth/me` - Get current user info
-- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user info (requires auth)
+- `POST /api/auth/refresh` - Refresh access token (requires auth)
+- `POST /api/auth/logout` - Logout (client-side token removal)
 
 ### Tasks
-- `GET /api/{user_id}/tasks` - Get all tasks for user
-- `POST /api/{user_id}/tasks` - Create new task
-- `GET /api/{user_id}/tasks/{task_id}` - Get specific task
-- `PUT /api/{user_id}/tasks/{task_id}` - Update task
-- `PATCH /api/{user_id}/tasks/{task_id}/complete` - Toggle completion
-- `DELETE /api/{user_id}/tasks/{task_id}` - Delete task
+All task endpoints require JWT authentication via `Authorization: Bearer <token>` header.
+
+- `GET /api/{user_id}/tasks` - Get all tasks for user (200 OK)
+- `POST /api/{user_id}/tasks` - Create new task (201 Created)
+- `GET /api/{user_id}/tasks/{task_id}` - Get specific task (200 OK)
+- `PUT /api/{user_id}/tasks/{task_id}` - Update task (200 OK)
+- `PATCH /api/{user_id}/tasks/{task_id}/complete` - Toggle completion (200 OK)
+- `DELETE /api/{user_id}/tasks/{task_id}` - Delete task (204 No Content)
+
+**Note**: The `{user_id}` in the URL must match the authenticated user's ID from the JWT token, otherwise a 403 Forbidden error is returned.
 
 ## Validation Rules
 

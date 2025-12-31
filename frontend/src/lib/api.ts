@@ -10,6 +10,10 @@ interface Task {
   description: string;
   completed: boolean;
   user_id: number;
+  priority?: string;
+  starred?: boolean;
+  tags?: string[];
+  due_date?: string;
   created_at: string;
   updated_at: string;
 }
@@ -191,7 +195,14 @@ export const apiClient = {
     return makeRequest<Task[]>(`/${userId}/tasks`);
   },
 
-  async createTask(userId: number, task: { title: string; description?: string }): Promise<Task> {
+  async createTask(userId: number, task: {
+    title: string;
+    description?: string;
+    priority?: string;
+    starred?: boolean;
+    tags?: string[];
+    due_date?: string;
+  }): Promise<Task> {
     console.log('[API] === CREATE TASK ===');
     return makeRequest<Task>(`/${userId}/tasks`, {
       method: 'POST',

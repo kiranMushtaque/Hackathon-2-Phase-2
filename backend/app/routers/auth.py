@@ -126,15 +126,37 @@ async def get_current_user_info(
     }
 
 
-@router.post("/refresh")
-async def refresh_token():
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Refresh access token.
+    Returns a new access token for the authenticated user.
     """
-    raise HTTPException(
-        status_code=400,
-        detail="Refresh token not implemented"
+    from ..crud import get_user
+
+    user = get_user(db, current_user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Create new access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
     )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name
+        }
+    }
 
 
 @router.post("/logout")
