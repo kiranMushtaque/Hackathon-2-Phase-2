@@ -13,12 +13,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Task Manager API - Phase II", lifespan=lifespan)
 
+# CORS Configuration - Allow all origins for now (restrict in production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://*.vercel.app",  # Vercel preview/production deployments
-    ],
+    allow_origins=["*"],  # Allows all origins - replace with specific domains in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
