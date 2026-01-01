@@ -54,6 +54,47 @@ type SortType = "newest" | "oldest" | "title" | "priority";
 type Theme = "light" | "dark" | "system";
 type Priority = "low" | "medium" | "high";
 
+// Speech Recognition types for browser compatibility
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
 // Enhanced Task interface
 interface EnhancedTask extends Task {
   starred?: boolean;
@@ -115,10 +156,12 @@ export default function HomePage() {
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
 
-  // Voice recognition state - SIMPLIFIED
+  // Voice recognition state - REAL IMPLEMENTATION
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [voiceSupported, setVoiceSupported] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   // Edit state
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
@@ -166,20 +209,77 @@ export default function HomePage() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // SIMPLIFIED Voice recognition - Only for browsers that support it
+  // REAL Voice recognition - Initialize SpeechRecognition
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Check if speech recognition is available
-      if (
-        "SpeechRecognition" in window ||
-        "webkitSpeechRecognition" in window
-      ) {
-        setVoiceSupported(true);
-      }
+    if (typeof window === "undefined") return;
+
+    // Check if speech recognition is available
+    const SpeechRecognitionClass =
+      (window as unknown as { SpeechRecognition?: new () => unknown }).SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => unknown }).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionClass) {
+      setVoiceSupported(false);
+      return;
     }
+
+    setVoiceSupported(true);
+
+    // Create recognition instance
+    const recognition = new SpeechRecognitionClass() as SpeechRecognition;
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setVoiceError(null);
+    };
+
+    recognition.onresult = (event: unknown) => {
+      const speechEvent = event as SpeechRecognitionEvent;
+      let finalTranscript = "";
+      let interimTranscript = "";
+
+      for (let i = speechEvent.resultIndex; i < speechEvent.results.length; i++) {
+        const result = speechEvent.results[i];
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript;
+        } else {
+          interimTranscript += result[0].transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setTranscript(finalTranscript);
+        setTitle(finalTranscript);
+      } else if (interimTranscript) {
+        setTranscript(interimTranscript);
+      }
+    };
+
+    recognition.onerror = (event: unknown) => {
+      const errorEvent = event as SpeechRecognitionErrorEvent;
+      console.error("Speech recognition error:", errorEvent.error);
+      setIsListening(false);
+
+      if (errorEvent.error === "not-allowed") {
+        setVoiceError("Microphone access denied. Please allow microphone access.");
+      } else if (errorEvent.error === "no-speech") {
+        setVoiceError("No speech detected. Please try again.");
+      } else {
+        setVoiceError(`Voice error: ${errorEvent.error}`);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
   }, []);
 
-  // Simple voice input handler
+  // Real voice input handler
   const handleVoiceInput = () => {
     if (!voiceSupported) {
       alert(
@@ -189,18 +289,19 @@ export default function HomePage() {
     }
 
     if (isListening) {
+      // Stop listening
+      recognitionRef.current?.stop();
       setIsListening(false);
-      setTranscript("");
     } else {
-      setIsListening(true);
-      // In a real app, you would start speech recognition here
-      // For now, we'll simulate voice input with a prompt
-      const voiceText = prompt("Enter your task (simulating voice input):");
-      if (voiceText) {
-        setTitle(voiceText);
-        setTranscript(voiceText);
+      // Start listening
+      setTranscript("");
+      setVoiceError(null);
+      try {
+        recognitionRef.current?.start();
+      } catch (err) {
+        console.error("Failed to start speech recognition:", err);
+        setVoiceError("Failed to start voice input. Please try again.");
       }
-      setIsListening(false);
     }
   };
 
@@ -956,7 +1057,7 @@ export default function HomePage() {
 
             {/* Right Side Controls */}
             <div className="flex items-center space-x-2">
-              {/* Voice Control Button - SIMPLIFIED */}
+              {/* Voice Control Button */}
               {voiceSupported && (
                 <button
                   onClick={handleVoiceInput}
@@ -965,7 +1066,7 @@ export default function HomePage() {
                       ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse"
                       : "bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-gray-600"
                   }`}
-                  title="Voice input (simulated)"
+                  title={isListening ? "Stop listening" : "Voice input - Click to speak"}
                 >
                   {isListening ? (
                     <MicOff className="w-5 h-5" />
@@ -1085,16 +1186,35 @@ export default function HomePage() {
           <div className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center space-x-3">
             <div className="relative">
               <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
-              <Mic className="w-6 h-6 relative" />
+              <Mic className="w-6 h-6 relative animate-pulse" />
             </div>
             <div>
-              <p className="font-medium">Voice Input Active</p>
+              <p className="font-medium">Listening...</p>
               <p className="text-sm opacity-90">
-                Check browser prompt for input
+                {transcript || "Speak now"}
               </p>
             </div>
             <button
-              onClick={() => setIsListening(false)}
+              onClick={() => recognitionRef.current?.stop()}
+              className="ml-4 p-1 hover:bg-white/20 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Error Display */}
+      {voiceError && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
+          <div className="bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center space-x-3">
+            <AlertCircle className="w-6 h-6" />
+            <div>
+              <p className="font-medium">Voice Error</p>
+              <p className="text-sm opacity-90">{voiceError}</p>
+            </div>
+            <button
+              onClick={() => setVoiceError(null)}
               className="ml-4 p-1 hover:bg-white/20 rounded-lg"
             >
               <X className="w-5 h-5" />
@@ -1247,16 +1367,17 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Simple Voice Control */}
+                {/* Voice Control Button */}
                 {voiceSupported && (
                   <button
+                    type="button"
                     onClick={handleVoiceInput}
                     className={`p-2 rounded-lg transition-all duration-300 ${
                       isListening
                         ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse"
                         : "bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-gray-600"
                     }`}
-                    title="Voice input (simulated)"
+                    title={isListening ? "Stop listening" : "Voice input - Click to speak"}
                   >
                     {isListening ? (
                       <MicOff className="w-5 h-5" />
