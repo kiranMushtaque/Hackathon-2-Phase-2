@@ -15,7 +15,10 @@ app = FastAPI(title="Task Manager API - Phase II", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://*.vercel.app",  # Vercel preview/production deployments
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,6 +33,13 @@ async def root():
     return {"message": "Task Manager API - Phase II"}
 
 
+@app.get("/api/health")
+async def api_health_check():
+    """Health check endpoint for Koyeb deployment."""
+    return {"status": "healthy"}
+
+
 @app.get("/health")
 async def health_check():
+    """Health check endpoint (alternative path)."""
     return {"status": "healthy"}
